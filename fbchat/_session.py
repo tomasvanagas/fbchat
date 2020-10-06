@@ -532,3 +532,10 @@ class Session:
             return message_ids[0]
         except (KeyError, IndexError, TypeError) as e:
             raise _exception.ParseError("No message IDs could be found", data=j) from e
+
+    def _uri_share_data(self, data):
+        data["image_height"] = 960
+        data["image_width"] = 960
+        data["__user"] = self.user.id
+        j = self._post("/message_share_attachment/fromURI/", data)
+        return j["payload"]["share_data"]
