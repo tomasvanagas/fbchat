@@ -241,12 +241,14 @@ class ThreadABC(metaclass=abc.ABCMeta):
         """
         return self.send_text(text=None, files=files)
     
-    def send_uri(self, uri: str, *args, **kwargs):
+    def send_uri(self, uri: str, **kwargs):
         """Send a uri preview to a thread.
         Args:
             uri: uri to preview
         """
-        self.send_text(text=None, uri=uri, *args, **kwargs)
+        if kwargs.get('text') is not None:
+            kwargs['text'] = None
+        self.send_text(uri=uri, **kwargs)
 
     def _generate_shareable_attachment(self, uri):
         """Send a uri preview to a thread.
