@@ -246,7 +246,7 @@ class ThreadABC(metaclass=abc.ABCMeta):
         Args:
             uri: uri to preview
         """
-        if kwargs.get('text') is not None:
+        if kwargs.get('text') is None:
             kwargs['text'] = None
         self.send_text(uri=uri, **kwargs)
 
