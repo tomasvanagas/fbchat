@@ -235,7 +235,45 @@ class ThreadABC(metaclass=abc.ABCMeta):
             >>> thread.send_files(files)
         """
         return self.send_text(text=None, files=files)
-
+    
+    def send_uri(self, uri, message=None):
+        """Send a uri preview to a thread.
+        Args:
+            uri: uri to preview
+            message (Message): Message to send
+        Returns:
+            :ref:`Message ID <intro_message_ids>` of the sent message
+        Raises:
+            FBchatException: If request failed
+        """
+        url_data = self.session._uri_share_data({"uri": uri})
+        data = self._to_send_data()
+        # if message is not None:
+        #     data.update(message._to_send_data())
+        data["action_type"] = "ma-type:user-generated-message"
+        data["shareable_attachment[share_type]"] = url_data["share_type"]
+        # most uri params will come back as dict
+        if isinstance(url_data["share_params"], dict):
+            data["has_attachment"] = True
+            for key in url_data["share_params"]:
+                if isinstance(url_data["share_params"][key], dict):
+                    for key2 in url_data["share_params"][key]:
+                        data[
+                            "shareable_attachment[share_params][{}][{}]".format(
+                                key, key2
+                            )
+                        ] = url_data["share_params"][key][key2]
+                else:
+                    data[
+                        "shareable_attachment[share_params][{}]".format(key)
+                    ] = url_data["share_params"][key]
+        # some (such as facebook profile pages) will just be a list
+        else:
+            data["has_attachment"] = False
+            for index, val in enumerate(url_data["share_params"]):
+                data["shareable_attachment[share_params][{}]".format(index)] = val
+        return self.session._do_send_request(data)
+    
     # xmd = {"quick_replies": []}
     # for quick_reply in quick_replies:
     #     # TODO: Move this to `_quick_reply.py`
