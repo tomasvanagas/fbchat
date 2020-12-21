@@ -16,8 +16,9 @@ from typing import Optional, Mapping, Callable, Any
 
 
 SERVER_JS_DEFINE_REGEX = re.compile(
-    r'(?:"ServerJS".{,100}\.handle\({.*"define":)|(?:require\("ServerJSDefine"\)\)?\.handleDefines\()'
-)
+    r'(?:"ServerJS".{,100}\.handle\({.*"define":)'
+    r'|(?:ServerJS.{,100}\.handleWithCustomApplyEach\(ScheduledApplyEach,{.*"define":)'
+    r'|(?:require\("ServerJSDefine"\)\)?\.handleDefines\()')
 SERVER_JS_DEFINE_JSON_DECODER = json.JSONDecoder()
 
 
@@ -411,14 +412,14 @@ class Session:
 
         # Make a request to the main page to retrieve ServerJSDefine entries
         try:
-            r = session.get(prefix_url("/"), allow_redirects=False)
+            r = session.get(prefix_url("/"), allow_redirects=True)
         except requests.RequestException as e:
             _exception.handle_requests_error(e)
         _exception.handle_http_error(r.status_code)
 
         define = parse_server_js_define(r.content.decode("utf-8"))
-
         fb_dtsg = get_fb_dtsg(define)
+
         if fb_dtsg is None:
             raise _exception.ParseError("Could not find fb_dtsg", data=define)
         if not fb_dtsg:
