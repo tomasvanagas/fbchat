@@ -105,6 +105,7 @@ class ThreadABC(metaclass=abc.ABCMeta):
         mentions: Iterable["_models.Mention"] = None,
         files: Iterable[Tuple[str, str]] = None,
         reply_to_id: str = None,
+        uri: str = None
     ) -> str:
         """Send a message to the thread.
 
@@ -114,6 +115,7 @@ class ThreadABC(metaclass=abc.ABCMeta):
             files: Optional tuples, each containing an uploaded file's ID and mimetype.
                 See `ThreadABC.send_files` for an example.
             reply_to_id: Optional message to reply to
+            uri: Uri to formulate a sharable attachment with
 
         Example:
             Send a message with a mention to a thread.
@@ -138,6 +140,9 @@ class ThreadABC(metaclass=abc.ABCMeta):
 
         if files:
             data["has_attachment"] = True
+            
+        if uri:
+            data.update(self._generate_shareable_attachment(uri))
 
         for i, (file_id, mimetype) in enumerate(files or ()):
             data["{}s[{}]".format(_util.mimetype_to_key(mimetype), i)] = file_id
@@ -235,7 +240,51 @@ class ThreadABC(metaclass=abc.ABCMeta):
             >>> thread.send_files(files)
         """
         return self.send_text(text=None, files=files)
+    
+    def send_uri(self, uri: str, **kwargs):
+        """Send a uri preview to a thread.
+        Args:
+            uri: uri to preview
+        """
+        if kwargs.get('text') is None:
+            kwargs['text'] = None
+        self.send_text(uri=uri, **kwargs)
 
+    def _generate_shareable_attachment(self, uri):
+        """Send a uri preview to a thread.
+        Args:
+            uri: uri to preview
+        Returns:
+            :ref:`Message ID <intro_message_ids>` of the sent message
+        Raises:
+            FBchatException: If request failed
+        """
+        url_data = self.session._uri_share_data({"uri": uri})
+        data = self._to_send_data()
+        data["action_type"] = "ma-type:user-generated-message"
+        data["shareable_attachment[share_type]"] = url_data["share_type"]
+        # most uri params will come back as dict
+        if isinstance(url_data["share_params"], dict):
+            data["has_attachment"] = True
+            for key in url_data["share_params"]:
+                if isinstance(url_data["share_params"][key], dict):
+                    for key2 in url_data["share_params"][key]:
+                        data[
+                            "shareable_attachment[share_params][{}][{}]".format(
+                                key, key2
+                            )
+                        ] = url_data["share_params"][key][key2]
+                else:
+                    data[
+                        "shareable_attachment[share_params][{}]".format(key)
+                    ] = url_data["share_params"][key]
+        # some (such as facebook profile pages) will just be a list
+        else:
+            data["has_attachment"] = False
+            for index, val in enumerate(url_data["share_params"]):
+                data["shareable_attachment[share_params][{}]".format(index)] = val
+        return data
+    
     # xmd = {"quick_replies": []}
     # for quick_reply in quick_replies:
     #     # TODO: Move this to `_quick_reply.py`
