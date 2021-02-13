@@ -18,8 +18,7 @@ from typing import Optional, Mapping, Callable, Any
 SERVER_JS_DEFINE_REGEX = re.compile(
     r'(?:"ServerJS".{,100}\.handle\({.*"define":)'
     r'|(?:ServerJS.{,100}\.handleWithCustomApplyEach\(ScheduledApplyEach,{.*"define":)'
-    r'|(?:require\("ServerJSDefine"\)\)?\.handleDefines\()'
-)
+    r'|(?:require\("ServerJSDefine"\)\)?\.handleDefines\()')
 SERVER_JS_DEFINE_JSON_DECODER = json.JSONDecoder()
 
 
@@ -419,8 +418,8 @@ class Session:
         _exception.handle_http_error(r.status_code)
 
         define = parse_server_js_define(r.content.decode("utf-8"))
-
         fb_dtsg = get_fb_dtsg(define)
+
         if fb_dtsg is None:
             raise _exception.ParseError("Could not find fb_dtsg", data=define)
         if not fb_dtsg:
@@ -534,3 +533,10 @@ class Session:
             return message_ids[0]
         except (KeyError, IndexError, TypeError) as e:
             raise _exception.ParseError("No message IDs could be found", data=j) from e
+
+    def _uri_share_data(self, data):
+        data["image_height"] = 960
+        data["image_width"] = 960
+        data["__user"] = self.user.id
+        j = self._post("/message_share_attachment/fromURI/", data)
+        return j["payload"]["share_data"]
